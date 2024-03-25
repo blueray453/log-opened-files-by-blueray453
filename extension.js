@@ -19,60 +19,100 @@
 /* exported init */
 const { Gio, GLib } = imports.gi;
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
+var MyExtension = class MyExtension {
+    constructor() {
+        this._connection = null;
+        this._id = 0;
+        this._file = null;
+    }
 
-class Extension {
     enable() {
-        this._connection = Gio.DBus.session;
+        // Connect to the session bus
+        this._connection = Gio.bus_get_sync(Gio.BusType.SESSION, null);
 
-        // var interface = Gio.DBusObject.get_interface("org.gtk.gio.DesktopAppInfo").get_info().lookup_signal("Launched");
+        // Name of the service emitting the D-Bus signal
+        let serviceName = null; // Since sender is (null destination)
 
-        this.handlerId = this._connection.signal_subscribe(null, "org.gtk.gio.DesktopAppInfo", "Launched", "/org/gtk/gio/DesktopAppInfo", null, 0, _parseSignal);
+        // D-Bus path emitting the signal
+        let objectPath = "/org/gtk/gio/DesktopAppInfo";
 
-        function _parseSignal(connection, sender, path, iface, signal, params) {
+        // Interface emitting the signal
+        let interfaceName = "org.gtk.gio.DesktopAppInfo";
 
-            // log("Calling _parseSignal");
+        // Name of the signal
+        let signalName = "Launched";
 
-            let focused_window_id = global.get_window_actors().find(w => w.meta_window.has_focus() == true).meta_window.get_id();
+        // Connect to the signal
+        this._id = this._connection.signal_subscribe(
+            serviceName,
+            interfaceName,
+            signalName,
+            objectPath,
+            null,
+            Gio.DBusSignalFlags.NONE,
+            this._handleSignal.bind(this)
+        );
 
-            const app_path = params.get_child_value(0).get_bytestring();
-            const app = Gio.DesktopAppInfo.new_from_filename(String.fromCharCode(...app_path));
-            const app_id = app.get_id();
-            const app_pid = params.get_child_value(2).get_int64();
-            const opened_file_path = params.get_child_value(3).get_strv();
-
-            // const variantString = params.print(true);
-            // log("variantString : " + variantString);
-            // log("variantString unpack : " + params.unpack());
-            // log("variantString deep unpack : " + params.deepUnpack());
-            // log("variantString recursive unpack : " + params.recursiveUnpack());
-
-            // log("app_path : " + app_path);
-            // log("app_id : " + app_id);
-            // log("app_pid : " + app_pid);
-            // log("app_path : " + app_path);
-            // // log("apppath type : " + typeof apppath);
-            // log("opened_file_path : " + opened_file_path);
-
-            if (opened_file_path) {
-                const file_path = GLib.build_filenamev([GLib.get_home_dir(), 'opened-files.log']);
-                const file = Gio.File.new_for_path(file_path);
-                // const outputStreamCreate = file.create(Gio.FileCreateFlags.NONE, null);
-                const outputStreamAppend = file.append_to(Gio.FileCreateFlags.NONE, null);
-                var to_write = focused_window_id + ' ' + app_id + ' ' + app_pid + ' ' + opened_file_path + '\n'
-                const bytesWritten = outputStreamAppend.write_all(to_write, null);
-            }
-        }
+        // Get the file path
+        const file_path = GLib.build_filenamev([GLib.get_home_dir(), 'opened-files.log']);
+        this._file = Gio.File.new_for_path(file_path);
     }
 
     disable() {
-        this._connection.signal_unsubscribe(this.handlerId);
-        log(`disabling ${Me.metadata.name}`);
+        if (this._connection && this._id > 0) {
+            this._connection.signal_unsubscribe(this._id);
+            this._id = 0;
+        }
     }
-}
+
+    _handleSignal(connection, senderName, objectPath, interfaceName, signalName, parameters) {
+        // Parse and handle the signal data
+        let [filePathBytes, _, processId, urls] = parameters.deep_unpack();
+
+        let pid = processId+2;
+
+        let decoder = new TextDecoder();
+        let desktopFilePath = decoder.decode(filePathBytes);
+        // Remove null character from the end of the string if present
+        desktopFilePath = desktopFilePath.replace(/\0/g, '');
+        // Assuming the parameters are in the given order
+
+        // let filePath = GLib.bytes_to_string(filePathBytes);
+        // encoded_path = GLib.filename_to_utf8(desktop_file_path)[0];
+
+        let app = Gio.DesktopAppInfo.new_from_filename(desktopFilePath);
+
+        let app_id = app.get_id();
+
+        log(`before data`);
+
+        // Create an object with the parsed data
+        let data = {
+            "app_id": app_id,
+            "process_id": pid,
+            "urls": urls
+        };
+
+        // Convert the object to JSON string
+        let json_data = JSON.stringify(data);
+
+        // Append the JSON data to the file
+        this._appendToFile(json_data);
+    }
+
+    _appendToFile(data) {
+        if (!this._file)
+            return;
+
+        // Open the file for appending
+        let outputStream = this._file.append_to(Gio.FileCreateFlags.NONE, null);
+
+        // Write the data to the file
+        outputStream.write(data, null);
+        outputStream.close(null);
+    }
+};
 
 function init() {
-    log(`initializing ${Me.metadata.name}`);
-    return new Extension();
+    return new MyExtension();
 }
