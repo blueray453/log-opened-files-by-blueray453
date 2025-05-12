@@ -69,7 +69,7 @@ var MyExtension = class MyExtension {
         // Parse and handle the signal data
         let [filePathBytes, _, processId, urls] = parameters.deep_unpack();
 
-        let pid = processId+2;
+        let pid = processId;
 
         let decoder = new TextDecoder();
         let desktopFilePath = decoder.decode(filePathBytes);
