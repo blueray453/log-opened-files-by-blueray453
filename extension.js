@@ -26,12 +26,6 @@ import { setLogging, setLogFn, journal } from './utils.js'
 
 export default class MyExtension extends Extension {
 
-    constructor() {
-        this._connection = null;
-        this._id = 0;
-        this._file = null;
-    }
-
     enable() {
 
         setLogFn((msg, error = false) => {
@@ -59,6 +53,10 @@ export default class MyExtension extends Extension {
         // journalctl -f -o cat SYSLOG_IDENTIFIER=log-opened-files-by-blueray453
 
         journal(`Enabled`);
+
+        this._connection = null;
+        this._id = 0;
+        this._file = null;
 
         // Connect to the session bus
         this._connection = Gio.bus_get_sync(Gio.BusType.SESSION, null);
