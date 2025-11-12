@@ -170,9 +170,23 @@ export default class MyExtension extends Extension {
             return {};
         journal(`Running loadAppMap: File Exists`);
         journal(`Running loadAppMap Path: ${FILE_PATH}`);
-        let content = GLib.file_get_contents(FILE_PATH)[1];
-        journal(`loadAppMap content: ${content}`);
-        return content;
+
+        let [ok, content] = GLib.file_get_contents(FILE_PATH);
+        if (!ok || !content)
+            return {};
+
+        journal(`Running loadAppMap content: ${content}`);
+
+        let str = DECODER.decode(content); // <-- convert bytes to string
+
+        journal(`Running loadAppMap str: ${str}`);
+
+        try {
+            return JSON.parse(str || '{}');
+        } catch (e) {
+            journal(`Failed to parse JSON: ${e}`);
+            return {};
+        }
     }
 
     saveAppMap(map) {
