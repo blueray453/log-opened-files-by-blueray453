@@ -38,7 +38,6 @@ export default class MyExtension extends Extension {
     }
 
     enable() {
-
         setLogFn((msg, error = false) => {
             let level;
             if (error) {
@@ -57,7 +56,6 @@ export default class MyExtension extends Extension {
                 }
             );
         });
-
 
         setLogging(true);
 
@@ -119,18 +117,12 @@ export default class MyExtension extends Extension {
         journal(`app_Id : ${app_Id}`);
 
         // Wait until the app has a window
-        this._waitForAppWindow(app_Id, uris, (data) => {
-            let json_data = JSON.stringify(data);
-            journal(`json_data: ${json_data}`);
-
+        this._waitForAppWindow(app_Id, (data) => {
             this.updateAppEntry(app_Id, data.windows, uris);
-
-            // You can now do anything with `data`
-            // Example: this._appendToFile(json_data);
         });
     }
 
-    _waitForAppWindow(app_Id, uris, callback) {
+    _waitForAppWindow(app_Id, callback) {
         let start = Date.now();
 
         // Poll every 200ms until we see a window or timeout after 5s
@@ -164,6 +156,23 @@ export default class MyExtension extends Extension {
         });
     }
 
+    updateAppEntry(app_Id, windows, uris) {
+
+        journal(`Running updateAppEntry`);
+
+        let map = this.loadAppMap();
+
+        journal(`map in updateAppEntry is ${map}`);
+
+        // Overwrite or add new entry for this app
+        map[app_Id] = {
+            windows: windows,
+            uris: uris
+        };
+
+        this.saveAppMap(map);
+    }
+
     loadAppMap() {
         journal(`Running loadAppMap`);
         if (!GLib.file_test(FILE_PATH, GLib.FileTest.EXISTS))
@@ -192,22 +201,5 @@ export default class MyExtension extends Extension {
     saveAppMap(map) {
         journal(`Running saveAppMap`);
         GLib.file_set_contents(FILE_PATH, JSON.stringify(map, null, 2));
-    }
-
-    updateAppEntry(app_Id, windows, uris) {
-
-        journal(`Running updateAppEntry`);
-
-        let map = this.loadAppMap();
-
-        journal(`map in updateAppEntry is ${map}`);
-
-        // Overwrite or add new entry for this app
-        map[app_Id] = {
-            windows: windows,
-            uris: uris
-        };
-
-        this.saveAppMap(map);
     }
 }
