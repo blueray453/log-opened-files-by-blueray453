@@ -26,6 +26,7 @@ import { setLogging, setLogFn, journal } from './utils.js'
 
 const AppSystem = global.get_app_system();
 const DECODER = new TextDecoder();
+const FILE_PATH = GLib.build_filenamev([GLib.get_home_dir(), 'opened-files.log']);
 
 export default class MyExtension extends Extension {
 
@@ -91,8 +92,7 @@ export default class MyExtension extends Extension {
         );
 
         // Get the file path
-        const file_path = GLib.build_filenamev([GLib.get_home_dir(), 'opened-files.log']);
-        this._file = Gio.File.new_for_path(file_path);
+        this._file = Gio.File.new_for_path(FILE_PATH);
     }
 
     disable() {
@@ -103,8 +103,8 @@ export default class MyExtension extends Extension {
     }
 
     _handleSignal(connection, senderName, objectPath, interfaceName, signalName, parameters) {
-        journal(`parameters : ${parameters.print(true)}`);
-        journal(`parameters Type : ${parameters.get_type_string()}`);
+        // journal(`parameters : ${parameters.print(true)}`);
+        // journal(`parameters Type : ${parameters.get_type_string()}`);
 
         let [desktopFileBytes, appId, pid, uris, metadata] = parameters.deepUnpack();
 
@@ -123,69 +123,11 @@ export default class MyExtension extends Extension {
             let json_data = JSON.stringify(data);
             journal(`json_data: ${json_data}`);
 
+            this.updateAppEntry(app_Id, data.windows, uris);
+
             // You can now do anything with `data`
             // Example: this._appendToFile(json_data);
         });
-
-        // GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
-
-        //     let shell_apps = AppSystem.lookup_app(app_Id);
-
-        //     journal(`shell_apps : ${shell_apps}`);
-
-        //     let windows_array = [];
-
-        //     shell_apps.get_windows().forEach(function (w) {
-        //         // console.log("window id : " + w.get_id());
-        //         windows_array.push(w.get_id());
-        //     })
-
-        //     let pids_array = shell_apps.get_pids();
-
-
-
-        // // journal(`Desktop File:", ${desktopFile}`);
-        // // journal(`App ID:", ${app_Id}`);
-        // // journal(`PID:", ${pid}`);
-        // // journal(`URIs:", ${uris.join(', ')}`);
-
-        // // // metadata is a JS object mapping string → Variant
-        // // for (let [key, value] of Object.entries(metadata)) {
-        // //     journal(`${key}: ${value.deepUnpack()}`);
-        // // }
-
-        // // // Parse and handle the signal data
-        // // // let [desktop, appid, pid, uris, extras] = params.deep_unpack();
-        // // let [filePathBytes, _, processId, urls] = parameters.deep_unpack();
-
-        // // let pid = processId;
-
-        // // // Remove null character from the end of the string if present
-        // // desktopFilePath = desktopFilePath.replace(/\0/g, '');
-        // // // Assuming the parameters are in the given order
-
-        // // // let filePath = GLib.bytes_to_string(filePathBytes);
-        // // // encoded_path = GLib.filename_to_utf8(desktop_file_path)[0];
-
-        // // journal(`before data`);
-
-        // // Create an object with the parsed data
-        // let data = {
-        //     app_Id: app_Id,
-        //     pid: pids_array,
-        //     windows: windows_array,
-        //     uris: uris
-        // };
-
-        // // Convert the object to JSON string
-        // let json_data = JSON.stringify(data);
-
-        // journal(`json_data: ${json_data}`);
-
-        // // // Append the JSON data to the file
-        // // this._appendToFile(json_data);
-        //     return GLib.SOURCE_REMOVE; // important to avoid repeated execution
-        // });
     }
 
     _waitForAppWindow(app_Id, uris, callback) {
@@ -203,10 +145,8 @@ export default class MyExtension extends Extension {
                     let windows_array = windows.map(w => w.get_id());
 
                     let data = {
-                        app_Id: app_Id,
-                        pid: pids,
-                        windows: windows_array,
-                        uris: uris
+                        pids: pids,
+                        windows: windows_array
                     };
 
                     callback(data);
@@ -224,15 +164,48 @@ export default class MyExtension extends Extension {
         });
     }
 
-    _appendToFile(data) {
-        if (!this._file)
-            return;
-
-        // Open the file for appending
-        let outputStream = this._file.append_to(Gio.FileCreateFlags.NONE, null);
-
-        // Write the data to the file
-        outputStream.write(data + "\n", null);
-        outputStream.close(null);
+    loadAppMap() {
+        journal(`Running loadAppMap`);
+        if (!GLib.file_test(FILE_PATH, GLib.FileTest.EXISTS))
+            return {};
+        journal(`Running loadAppMap: File Exists`);
+        journal(`Running loadAppMap Path: ${FILE_PATH}`);
+        let content = GLib.file_get_contents(FILE_PATH)[1];
+        journal(`loadAppMap content: ${content}`);
+        return content;
     }
+
+    saveAppMap(map) {
+        journal(`Running saveAppMap`);
+        GLib.file_set_contents(FILE_PATH, JSON.stringify(map, null, 2));
+    }
+
+    updateAppEntry(app_Id, windows, uris) {
+
+        journal(`Running updateAppEntry`);
+
+        let map = this.loadAppMap();
+
+        journal(`map in updateAppEntry is ${map}`);
+
+        // Overwrite or add new entry for this app
+        map[app_Id] = {
+            windows: windows,
+            uris: uris
+        };
+
+        this.saveAppMap(map);
+    }
+
+    // _appendToFile(data) {
+    //     if (!this._file)
+    //         return;
+
+    //     // Open the file for appending
+    //     let outputStream = this._file.append_to(Gio.FileCreateFlags.NONE, null);
+
+    //     // Write the data to the file
+    //     outputStream.write(data + "\n", null);
+    //     outputStream.close(null);
+    // }
 }
