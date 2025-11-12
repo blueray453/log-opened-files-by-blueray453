@@ -210,16 +210,4 @@ export default class MyExtension extends Extension {
 
         this.saveAppMap(map);
     }
-
-    // _appendToFile(data) {
-    //     if (!this._file)
-    //         return;
-
-    //     // Open the file for appending
-    //     let outputStream = this._file.append_to(Gio.FileCreateFlags.NONE, null);
-
-    //     // Write the data to the file
-    //     outputStream.write(data + "\n", null);
-    //     outputStream.close(null);
-    // }
 }
