@@ -17,9 +17,13 @@
  */
 
 /* exported init */
-const { Gio, GLib } = imports.gi;
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
-var MyExtension = class MyExtension {
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+
+export default class MyExtension extends Extension {
+
     constructor() {
         this._connection = null;
         this._id = 0;
@@ -111,8 +115,4 @@ var MyExtension = class MyExtension {
         outputStream.write(data, null);
         outputStream.close(null);
     }
-};
-
-function init() {
-    return new MyExtension();
 }

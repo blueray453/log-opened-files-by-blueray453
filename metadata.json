@@ -3,12 +3,10 @@
   "description": "Log opened files to open containing folders",
   "name": "Log Opened Files by blueray453",
   "shell-version": [
-    "40",
-    "41",
-    "42",
-    "43"
+    "48",
+    "49"
   ],
   "url": "https://github.com/blueray453/log-opened-files-by-blueray453",
   "uuid": "log-opened-files-by-blueray453",
-  "version": 12
+  "version": 1
 }
