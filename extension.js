@@ -22,6 +22,8 @@ import GLib from 'gi://GLib';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import { setLogging, setLogFn, journal } from './utils.js'
+
 export default class MyExtension extends Extension {
 
     constructor() {
@@ -31,6 +33,33 @@ export default class MyExtension extends Extension {
     }
 
     enable() {
+
+        setLogFn((msg, error = false) => {
+            let level;
+            if (error) {
+                level = GLib.LogLevelFlags.LEVEL_CRITICAL;
+            } else {
+                level = GLib.LogLevelFlags.LEVEL_MESSAGE;
+            }
+
+            GLib.log_structured(
+                'log-opened-files-by-blueray453',
+                level,
+                {
+                    MESSAGE: `${msg}`,
+                    SYSLOG_IDENTIFIER: 'log-opened-files-by-blueray453',
+                    CODE_FILE: GLib.filename_from_uri(import.meta.url)[0]
+                }
+            );
+        });
+
+
+        setLogging(true);
+
+        // journalctl -f -o cat SYSLOG_IDENTIFIER=log-opened-files-by-blueray453
+
+        journal(`Enabled`);
+
         // Connect to the session bus
         this._connection = Gio.bus_get_sync(Gio.BusType.SESSION, null);
 
