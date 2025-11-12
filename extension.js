@@ -118,64 +118,109 @@ export default class MyExtension extends Extension {
 
         journal(`app_Id : ${app_Id}`);
 
-        GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+        // Wait until the app has a window
+        this._waitForAppWindow(app_Id, uris, (data) => {
+            let json_data = JSON.stringify(data);
+            journal(`json_data: ${json_data}`);
 
-            let shell_apps = AppSystem.lookup_app(app_Id);
+            // You can now do anything with `data`
+            // Example: this._appendToFile(json_data);
+        });
 
-            journal(`shell_apps : ${shell_apps}`);
+        // GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
 
-            let windows_array = [];
+        //     let shell_apps = AppSystem.lookup_app(app_Id);
 
-            shell_apps.get_windows().forEach(function (w) {
-                // console.log("window id : " + w.get_id());
-                windows_array.push(w.get_id());
-            })
+        //     journal(`shell_apps : ${shell_apps}`);
 
-            let pids_array = shell_apps.get_pids();
+        //     let windows_array = [];
+
+        //     shell_apps.get_windows().forEach(function (w) {
+        //         // console.log("window id : " + w.get_id());
+        //         windows_array.push(w.get_id());
+        //     })
+
+        //     let pids_array = shell_apps.get_pids();
 
 
 
-        // journal(`Desktop File:", ${desktopFile}`);
-        // journal(`App ID:", ${app_Id}`);
-        // journal(`PID:", ${pid}`);
-        // journal(`URIs:", ${uris.join(', ')}`);
+        // // journal(`Desktop File:", ${desktopFile}`);
+        // // journal(`App ID:", ${app_Id}`);
+        // // journal(`PID:", ${pid}`);
+        // // journal(`URIs:", ${uris.join(', ')}`);
 
-        // // metadata is a JS object mapping string → Variant
-        // for (let [key, value] of Object.entries(metadata)) {
-        //     journal(`${key}: ${value.deepUnpack()}`);
-        // }
+        // // // metadata is a JS object mapping string → Variant
+        // // for (let [key, value] of Object.entries(metadata)) {
+        // //     journal(`${key}: ${value.deepUnpack()}`);
+        // // }
 
-        // // Parse and handle the signal data
-        // // let [desktop, appid, pid, uris, extras] = params.deep_unpack();
-        // let [filePathBytes, _, processId, urls] = parameters.deep_unpack();
+        // // // Parse and handle the signal data
+        // // // let [desktop, appid, pid, uris, extras] = params.deep_unpack();
+        // // let [filePathBytes, _, processId, urls] = parameters.deep_unpack();
 
-        // let pid = processId;
+        // // let pid = processId;
 
-        // // Remove null character from the end of the string if present
-        // desktopFilePath = desktopFilePath.replace(/\0/g, '');
-        // // Assuming the parameters are in the given order
+        // // // Remove null character from the end of the string if present
+        // // desktopFilePath = desktopFilePath.replace(/\0/g, '');
+        // // // Assuming the parameters are in the given order
 
-        // // let filePath = GLib.bytes_to_string(filePathBytes);
-        // // encoded_path = GLib.filename_to_utf8(desktop_file_path)[0];
+        // // // let filePath = GLib.bytes_to_string(filePathBytes);
+        // // // encoded_path = GLib.filename_to_utf8(desktop_file_path)[0];
 
-        // journal(`before data`);
+        // // journal(`before data`);
 
-        // Create an object with the parsed data
-        let data = {
-            app_Id: app_Id,
-            pid: pids_array,
-            windows: windows_array,
-            uris: uris
-        };
+        // // Create an object with the parsed data
+        // let data = {
+        //     app_Id: app_Id,
+        //     pid: pids_array,
+        //     windows: windows_array,
+        //     uris: uris
+        // };
 
-        // Convert the object to JSON string
-        let json_data = JSON.stringify(data);
+        // // Convert the object to JSON string
+        // let json_data = JSON.stringify(data);
 
-        journal(`json_data: ${json_data}`);
+        // journal(`json_data: ${json_data}`);
 
-        // // Append the JSON data to the file
-        // this._appendToFile(json_data);
-            return GLib.SOURCE_REMOVE; // important to avoid repeated execution
+        // // // Append the JSON data to the file
+        // // this._appendToFile(json_data);
+        //     return GLib.SOURCE_REMOVE; // important to avoid repeated execution
+        // });
+    }
+
+    _waitForAppWindow(app_Id, uris, callback) {
+        let start = Date.now();
+
+        // Poll every 200ms until we see a window or timeout after 5s
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+            let app = AppSystem.lookup_app(app_Id);
+
+            if (app) {
+                let windows = app.get_windows();
+
+                if (windows.length > 0) {
+                    let pids = app.get_pids();
+                    let windows_array = windows.map(w => w.get_id());
+
+                    let data = {
+                        app_Id: app_Id,
+                        pid: pids,
+                        windows: windows_array,
+                        uris: uris
+                    };
+
+                    callback(data);
+                    return GLib.SOURCE_REMOVE; // stop polling
+                }
+            }
+
+            // Safety: stop polling after 5 seconds
+            if (Date.now() - start > 5000) {
+                journal(`Timeout: No window found for ${app_Id}`);
+                return GLib.SOURCE_REMOVE;
+            }
+
+            return GLib.SOURCE_CONTINUE; // keep waiting
         });
     }
 
