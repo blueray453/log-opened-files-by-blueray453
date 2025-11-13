@@ -126,7 +126,7 @@ export default class MyExtension extends Extension {
         let start = Date.now();
 
         // Poll every 200ms until we see a window or timeout after 5s
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
             let app = AppSystem.lookup_app(app_Id);
 
             if (app) {
@@ -147,7 +147,7 @@ export default class MyExtension extends Extension {
             }
 
             // Safety: stop polling after 5 seconds
-            if (Date.now() - start > 5000) {
+            if (Date.now() - start > 1500) {
                 journal(`Timeout: No window found for ${app_Id}`);
                 return GLib.SOURCE_REMOVE;
             }
