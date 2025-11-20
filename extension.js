@@ -123,7 +123,9 @@ export default class MyExtension extends Extension {
     }
 
     _waitForAppWindow(app_Id, callback) {
-        let start = Date.now();
+
+        let attempts = 0;
+        let maxAttempts = 15;  // ~1500ms if interval is 100ms
 
         // Poll every 200ms until we see a window or timeout after 5s
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
@@ -146,8 +148,10 @@ export default class MyExtension extends Extension {
                 }
             }
 
-            // Safety: stop polling after 5 seconds
-            if (Date.now() - start > 1500) {
+            // Stop after N polling rounds
+            attempts++;
+
+            if (attempts >= maxAttempts) {
                 journal(`Timeout: No window found for ${app_Id}`);
                 return GLib.SOURCE_REMOVE;
             }
