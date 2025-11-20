@@ -127,7 +127,7 @@ export default class MyExtension extends Extension {
         let attempts = 0;
         let maxAttempts = 15;  // ~1500ms if interval is 100ms
 
-        // Poll every 200ms until we see a window or timeout after 5s
+        // Poll every 100ms until we see a window or timeout after 5s
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
             let app = AppSystem.lookup_app(app_Id);
 
